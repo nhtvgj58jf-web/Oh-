@@ -167,6 +167,10 @@ static UIFont *PCTLoadCustomFont(CGFloat size) {
 // Custom font applied to the title/name label. Real class is likely
 // something like PeerInfoTitleNode / ImmediateTextNode used inside the
 // header — adjust the target class/property to match what class-dump shows.
+#import <objc/runtime.h>
+
+@interface PeerInfoHeaderNode : UIView
+@end
 
 %hook PeerInfoTitleNode
 
