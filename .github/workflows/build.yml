@@ -8,17 +8,27 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
       - name: Install Theos
-        run: "export THEOS=/opt/theos && sudo git clone --recursive https://github.com/theos/theos.git $THEOS && echo THEOS=$THEOS >> $GITHUB_ENV"
+        run: |
+          export THEOS=/opt/theos
+          sudo git clone --recursive https://github.com/theos/theos.git $THEOS
+          echo THEOS=$THEOS >> $GITHUB_ENV
       - name: Install ldid
-        run: "brew install ldid"
+        run: brew install ldid
       - name: Build tweak
-        run: "export THEOS=/opt/theos && (cd ProfileCustomTweak || cd ПрофильCustomTweak) && make package FINALPACKAGE=1"
-        env: { THEOS: "/opt/theos" }
+        run: |
+          export THEOS=/opt/theos
+          ls -la
+          cd "ПрофильCustomTweak"
+          pwd
+          ls -la
+          make package FINALPACKAGE=1
       - name: Locate built dylib
-        run: "find . -name *.dylib -o -name *.deb"
+        run: find . -name "*.dylib" -o -name "*.deb"
       - name: Upload dylib artifact
         uses: actions/upload-artifact@v4
-        with: { name: "ProfileCustomTweak-dylib", path: "**/*.dylib" }
+        with:
+          name: "ProfileCustomTweak-dylib"
+          path: "**/*.dylib"
   inject:
     needs: build
     runs-on: macos-latest
@@ -27,21 +37,47 @@ jobs:
         uses: actions/checkout@v4
       - name: Download built dylib
         uses: actions/download-artifact@v4
-        with: { name: "ProfileCustomTweak-dylib", path: "built" }
+        with:
+          name: "ProfileCustomTweak-dylib"
+          path: "built"
       - name: Download target IPA from Release
-        run: "mkdir -p input && curl -L -o input/$IPA_NAME \"$IPA_URL\" && ls -la input"
+        run: |
+          mkdir -p input
+          curl -L -o input/$IPA_NAME "$IPA_URL"
+          ls -la input
       - name: Install insert_dylib
-        run: "git clone https://github.com/tyilo/insert_dylib.git && cd insert_dylib && xcodebuild -project insert_dylib.xcodeproj -configuration Release && sudo cp build/Release/insert_dylib /usr/local/bin/insert_dylib"
+        run: |
+          git clone https://github.com/tyilo/insert_dylib.git
+          cd insert_dylib
+          xcodebuild -project insert_dylib.xcodeproj -configuration Release
+          sudo cp build/Release/insert_dylib /usr/local/bin/insert_dylib
       - name: Unzip target IPA
-        run: "mkdir -p work && unzip -q input/$IPA_NAME -d work && find work -maxdepth 2 -name *.app"
+        run: |
+          mkdir -p work
+          unzip -q input/$IPA_NAME -d work
+          find work -maxdepth 2 -name "*.app"
       - name: Copy dylib into app bundle
-        run: "APP=$(find work/Payload -maxdepth 1 -name *.app | head -n1) && echo APP=$APP >> $GITHUB_ENV && mkdir -p \"$APP/Frameworks\" && find built -name *.dylib -exec cp {} \"$APP/Frameworks/ProfileCustomTweak.dylib\" \\;"
+        run: |
+          APP=$(find work/Payload -maxdepth 1 -name "*.app" | head -n1)
+          echo "APP=$APP" >> $GITHUB_ENV
+          mkdir -p "$APP/Frameworks"
+          find built -name "*.dylib" -exec cp {} "$APP/Frameworks/ProfileCustomTweak.dylib" \;
       - name: Inject dylib load command
-        run: "BIN=$(find \"$APP\" -maxdepth 1 -type f -perm -u+x | head -n1) && echo $BIN && insert_dylib --inplace --weak @executable_path/Frameworks/ProfileCustomTweak.dylib \"$BIN\""
+        run: |
+          BIN=$(find "$APP" -maxdepth 1 -type f -perm -u+x | head -n1)
+          echo "Binary: $BIN"
+          insert_dylib --inplace --weak @executable_path/Frameworks/ProfileCustomTweak.dylib "$BIN"
       - name: Ad-hoc sign
-        run: "BIN=$(find \"$APP\" -maxdepth 1 -type f -perm -u+x | head -n1) && ldid -S \"$APP/Frameworks/ProfileCustomTweak.dylib\" && ldid -S \"$BIN\""
+        run: |
+          BIN=$(find "$APP" -maxdepth 1 -type f -perm -u+x | head -n1)
+          ldid -S "$APP/Frameworks/ProfileCustomTweak.dylib"
+          ldid -S "$BIN"
       - name: Repack IPA
-        run: "cd work && zip -qr ../Telegram_with_ProfileCustomTweak.ipa Payload"
+        run: |
+          cd work
+          zip -qr ../Telegram_with_ProfileCustomTweak.ipa Payload
       - name: Upload patched IPA
         uses: actions/upload-artifact@v4
-        with: { name: "Telegram_with_ProfileCustomTweak", path: "Telegram_with_ProfileCustomTweak.ipa" }
+        with:
+          name: "Telegram_with_ProfileCustomTweak"
+          path: "Telegram_with_ProfileCustomTweak.ipa"
