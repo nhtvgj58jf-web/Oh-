@@ -3,8 +3,8 @@ on: { workflow_dispatch: {} }
 env: { IPA_URL: "https://github.com/nhtvgj58jf-web/Oh-/releases/download/This/Telegram_dark+ex.ipa", IPA_NAME: "Telegram_dark_ex.ipa" }
 jobs:
   build:
-  runs-on: macos-latest
-  steps:
+    runs-on: macos-latest
+    steps:
     - name: Checkout repo
       uses: actions/checkout@v4
 
@@ -22,9 +22,14 @@ jobs:
 
     - name: Locate built dylib
       run: find . -name "*.dylib" -o -name "*.deb"
-      - name: Upload dylib artifact
-        uses: actions/upload-artifact@v4
-        with: { name: "ProfileCustomTweak-dylib", path: "**/*.dylib" }
+    - name: Locate built dylib
+      run: find . -name "*.dylib" -o -name "*.deb"
+
+    - name: Upload dylib artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ProfileCustomTweak-dylib
+        path: "**/*.dylib"
   inject:
     needs: build
     runs-on: macos-latest
