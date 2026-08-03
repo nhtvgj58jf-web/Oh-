@@ -20,8 +20,9 @@ jobs:
           ls -la
           cd ProfileCustomTweak
           pwd
-          ls -la
           make package FINALPACKAGE=1
+        env:
+          THEOS: /opt/theos
       - name: Locate built dylib
         run: find . -name "*.dylib" -o -name "*.deb"
       - name: Upload dylib artifact
