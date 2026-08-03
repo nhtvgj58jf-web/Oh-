@@ -61,14 +61,14 @@ jobs:
           curl -L -o input/$IPA_NAME "$IPA_URL"
           ls -la input
 
-      - name: Install insert_dylib
+            - name: Install insert_dylib
         run: |
           git clone https://github.com/tyilo/insert_dylib.git
           cd insert_dylib
           xcodebuild -project insert_dylib.xcodeproj -configuration Release
           sudo cp build/Release/insert_dylib /usr/local/bin/insert_dylib
 
-            - name: Unzip target IPA
+      - name: Unzip target IPA
         run: |
           mkdir -p work
           unzip -q input/$IPA_NAME -d work
@@ -89,16 +89,7 @@ jobs:
           mkdir -p "$APP/Frameworks"
 
           find built -name "*.dylib" -exec cp {} "$APP/Frameworks/ProfileCustomTweak.dylib" \;
-      - name: Ad-hoc sign
-        run: |
-          BIN=$(find "$APP" -maxdepth 1 -type f -perm -u+x | head -n1)
-          ldid -S "$APP/Frameworks/ProfileCustomTweak.dylib"
-          ldid -S "$BIN"
 
-      - name: Repack IPA
-        run: |
-          cd work
-          zip -qr ../Telegram_with_ProfileCustomTweak.ipa Payload
       - name: Inject dylib load command
         run: |
           echo "APP=$APP"
@@ -114,8 +105,20 @@ jobs:
           fi
 
           insert_dylib --inplace --weak @executable_path/Frameworks/ProfileCustomTweak.dylib "$BIN"
+
+      - name: Ad-hoc sign
+        run: |
+          BIN=$(find "$APP" -maxdepth 1 -type f -perm -111 | head -n1)
+          ldid -S "$APP/Frameworks/ProfileCustomTweak.dylib"
+          ldid -S "$BIN"
+
+      - name: Repack IPA
+        run: |
+          cd work
+          zip -qr ../Telegram_with_ProfileCustomTweak.ipa Payload
+
       - name: Upload patched IPA
         uses: actions/upload-artifact@v4
         with:
-          name: Telegram_with_ProfileCustomTweak
+          name: Telegram_with_ProfileCustomCustomTweak
           path: Telegram_with_ProfileCustomTweak.ipa
