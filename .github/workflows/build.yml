@@ -130,9 +130,12 @@ jobs:
 
           echo "BIN=$BIN"
 
-          ls -la "$APP"
-
+          echo "Signing dylib..."
+          ls -l "$APP/Frameworks/ProfileCustomTweak.dylib"
           ldid -S "$APP/Frameworks/ProfileCustomTweak.dylib"
+
+          echo "Signing executable..."
+          ls -l "$BIN"
           ldid -S "$BIN"
       - name: Repack IPA
         run: |
