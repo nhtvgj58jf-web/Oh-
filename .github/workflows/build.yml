@@ -91,8 +91,13 @@ jobs:
 
           mkdir -p "$APP/Frameworks"
 
-          find built -name "*.dylib" -exec cp {} "$APP/Frameworks/ProfileCustomTweak.dylib" \;
+          find built -name "*.dylib" -exec cp {} "$APP/Frameworks/ProfileCustomTweak.dylib" \; 
+          echo "=== Files in built ==="
+          find built -type f
 
+          echo "=== Files in Frameworks ==="
+          ls -la "$APP/Frameworks"
+     
       - name: Inject dylib load command
         run: |
           echo "APP=$APP"
