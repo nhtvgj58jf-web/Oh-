@@ -126,16 +126,20 @@ jobs:
         run: |
           echo "APP=$APP"
 
-          BIN=$(find "$APP" -maxdepth 1 -type f -perm -111 | head -n1)
+          BIN="$APP/Telegram"
 
           echo "BIN=$BIN"
 
+          if [ ! -f "$BIN" ]; then
+            echo "Executable not found: $BIN"
+            ls -la "$APP"
+            exit 1
+          fi
+
           echo "Signing dylib..."
-          ls -l "$APP/Frameworks/ProfileCustomTweak.dylib"
           ldid -S "$APP/Frameworks/ProfileCustomTweak.dylib"
 
           echo "Signing executable..."
-          ls -l "$BIN"
           ldid -S "$BIN"
       - name: Repack IPA
         run: |
