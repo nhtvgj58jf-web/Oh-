@@ -77,10 +77,17 @@ jobs:
       - name: Copy dylib into app bundle
         run: |
           APP=$(find work -name "*.app" | head -n1)
-          echo APP=$APP >> $GITHUB_ENV
+          echo "Found APP: $APP"
+
+          if [ -z "$APP" ]; then
+            echo "APP not found"
+            find work -maxdepth 5 -type d
+            exit 1
+          fi
+
+          echo "APP=$APP" >> $GITHUB_ENV
           mkdir -p "$APP/Frameworks"
           find built -name "*.dylib" -exec cp {} "$APP/Frameworks/ProfileCustomTweak.dylib" \;
-
       - name: Inject dylib load command
         run: |
           BIN=$(find "$APP" -maxdepth 1 -type f -perm -u+x | head -n1)
