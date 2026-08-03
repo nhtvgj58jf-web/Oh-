@@ -87,17 +87,7 @@ jobs:
 
           echo "APP=$APP" >> $GITHUB_ENV
           mkdir -p "$APP/Frameworks"
-          find built -name "*.dylib" -exec cp {} "$APP/Frameworks/ProfileCustomTweak.dylib" \;
-      - name: Inject dylib load command
-        run: |
-          echo "APP=$APP"
-          ls -la "$APP"
-
-          BIN=$(find "$APP" -maxdepth 1 -type f | head -n1)
-          echo "BIN=$BIN"
-
-          insert_dylib --inplace --weak @executable_path/Frameworks/ProfileCustomTweak.dylib "$BIN"
-
+          find built -name "*.dylib" -exec cp {} "$APP/Frameworks/
       - name: Ad-hoc sign
         run: |
           BIN=$(find "$APP" -maxdepth 1 -type f -perm -u+x | head -n1)
@@ -108,7 +98,21 @@ jobs:
         run: |
           cd work
           zip -qr ../Telegram_with_ProfileCustomTweak.ipa Payload
+      - name: Inject dylib load command
+        run: |
+          echo "APP=$APP"
 
+          BIN=$(find "$APP" -maxdepth 1 -type f -perm -111 | head -n1)
+
+          echo "BIN=$BIN"
+
+          if [ -z "$BIN" ]; then
+            echo "Executable not found"
+            ls -la "$APP"
+            exit 1
+          fi
+
+          insert_dylib --inplace --weak @executable_path/Frameworks/ProfileCustomTweak.dylib "$BIN"
       - name: Upload patched IPA
         uses: actions/upload-artifact@v4
         with:
