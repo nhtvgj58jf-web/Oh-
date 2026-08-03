@@ -49,6 +49,9 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Install ldid
+        run: brew install ldid
+      
       - name: Download built dylib
         uses: actions/download-artifact@v4
         with:
