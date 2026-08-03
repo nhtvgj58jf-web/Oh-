@@ -1,84 +1,148 @@
 name: Build ProfileCustomTweak
-on: { workflow_dispatch: {} }
-env: { IPA_URL: "https://github.com/nhtvgj58jf-web/Oh-/releases/download/This/Telegram_dark+ex.ipa", IPA_NAME: "Telegram_dark_ex.ipa" }
+on: workflow_dispatch
+
+env:
+  IPA_URL: "https://github.com/nhtvgj58jf-web/Oh-/releases/download/This/Telegram_dark+ex.ipa"
+  IPA_NAME: "Telegram_dark_ex.ipa"
+
 jobs:
   build:
     runs-on: macos-latest
+    
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        
+      - name: Show repo structure
+        run: |
+          echo "=== Root directory ==="
+          ls -la
+          echo "=== Looking for tweak folders ==="
+          find . -maxdepth 2 -name "*CustomTweak*" -o -name "*Profile*"
+          
       - name: Install Theos
         run: |
-          export THEOS=/opt/theos
-          sudo git clone --recursive https://github.com/theos/theos.git $THEOS
-          echo THEOS=$THEOS >> $GITHUB_ENV
+          sudo git clone --recursive https://github.com/theos/theos.git /opt/theos
+          echo "THEOS=/opt/theos" >> $GITHUB_ENV
+          
       - name: Install ldid
         run: brew install ldid
+        
       - name: Build tweak
         run: |
           export THEOS=/opt/theos
+          echo "Current directory: $(pwd)"
+          echo "Contents:"
           ls -la
-          cd ProfileCustomTweak
-          pwd
+          
+          # Try to find the correct folder
+          if [ -d "ProfileCustomTweak" ]; then
+            echo "Found ProfileCustomTweak folder"
+            cd ProfileCustomTweak
+          elif [ -d "ПрофильCustomTweak" ]; then
+            echo "Found ПрофильCustomTweak folder"
+            cd "ПрофильCustomTweak"
+          else
+            echo "ERROR: No tweak folder found!"
+            exit 1
+          fi
+          
+          echo "Now in: $(pwd)"
+          echo "Contents of tweak folder:"
+          ls -la
+          
+          # Check if Makefile exists
+          if [ -f "Makefile" ]; then
+            echo "Makefile found!"
+            cat Makefile
+          else
+            echo "ERROR: Makefile not found in $(pwd)"
+            exit 1
+          fi
+          
+          # Build the tweak
           make package FINALPACKAGE=1
-        env:
-          THEOS: /opt/theos
-      - name: Locate built dylib
-        run: find . -name "*.dylib" -o -name "*.deb"
-      - name: Upload dylib artifact
+          
+      - name: Find built files
+        run: |
+          echo "Searching for .dylib and .deb files..."
+          find . -name "*.dylib" -o -name "*.deb" | while read file; do
+            echo "Found: $file"
+            ls -la "$file"
+          done
+          
+      - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: "ProfileCustomTweak-dylib"
+          name: ProfileCustomTweak-dylib
           path: "**/*.dylib"
+          
   inject:
     needs: build
     runs-on: macos-latest
+    
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-      - name: Download built dylib
+        
+      - name: Download dylib
         uses: actions/download-artifact@v4
         with:
-          name: "ProfileCustomTweak-dylib"
-          path: "built"
-      - name: Download target IPA from Release
+          name: ProfileCustomTweak-dylib
+          path: built
+          
+      - name: Show downloaded files
+        run: |
+          echo "Downloaded files:"
+          ls -la built/
+          
+      - name: Download IPA
         run: |
           mkdir -p input
-          curl -L -o input/$IPA_NAME "$IPA_URL"
-          ls -la input
+          curl -L -o "input/${{ env.IPA_NAME }}" "${{ env.IPA_URL }}"
+          ls -la input/
+          
       - name: Install insert_dylib
         run: |
           git clone https://github.com/tyilo/insert_dylib.git
           cd insert_dylib
           xcodebuild -project insert_dylib.xcodeproj -configuration Release
-          sudo cp build/Release/insert_dylib /usr/local/bin/insert_dylib
-      - name: Unzip target IPA
+          sudo cp build/Release/insert_dylib /usr/local/bin/
+          
+      - name: Unzip IPA
         run: |
           mkdir -p work
-          unzip -q input/$IPA_NAME -d work
-          find work -maxdepth 2 -name "*.app"
-      - name: Copy dylib into app bundle
+          unzip -q "input/${{ env.IPA_NAME }}" -d work
+          find work -name "*.app"
+          
+      - name: Copy dylib to app
         run: |
-          APP=$(find work/Payload -maxdepth 1 -name "*.app" | head -n1)
+          APP=$(find work/Payload -name "*.app" | head -n1)
           echo "APP=$APP" >> $GITHUB_ENV
           mkdir -p "$APP/Frameworks"
-          find built -name "*.dylib" -exec cp {} "$APP/Frameworks/ProfileCustomTweak.dylib" \;
-      - name: Inject dylib load command
+          cp built/*.dylib "$APP/Frameworks/ProfileCustomTweak.dylib"
+          echo "Copied dylib to: $APP/Frameworks/"
+          ls -la "$APP/Frameworks/"
+          
+      - name: Inject dylib
         run: |
           BIN=$(find "$APP" -maxdepth 1 -type f -perm -u+x | head -n1)
           echo "Binary: $BIN"
           insert_dylib --inplace --weak @executable_path/Frameworks/ProfileCustomTweak.dylib "$BIN"
-      - name: Ad-hoc sign
+          
+      - name: Sign binaries
         run: |
           BIN=$(find "$APP" -maxdepth 1 -type f -perm -u+x | head -n1)
-          ldid -S "$APP/Frameworks/ProfileCustomTweak.dylib"
-          ldid -S "$BIN"
+          ldid -S "$APP/Frameworks/ProfileCustomTweak.dylib" || echo "Signing dylib failed, continuing..."
+          ldid -S "$BIN" || echo "Signing binary failed, continuing..."
+          
       - name: Repack IPA
         run: |
           cd work
-          zip -qr ../Telegram_with_ProfileCustomTweak.ipa Payload
+          zip -qr "../Telegram_with_ProfileCustomTweak.ipa" Payload
+          
       - name: Upload patched IPA
         uses: actions/upload-artifact@v4
         with:
-          name: "Telegram_with_ProfileCustomTweak"
-          path: "Telegram_with_ProfileCustomTweak.ipa"
+          name: Telegram_with_ProfileCustomTweak
+          path: Telegram_with_ProfileCustomTweak.ipa 
