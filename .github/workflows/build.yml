@@ -11,9 +11,11 @@ jobs:
         run: "export THEOS=/opt/theos && sudo git clone --recursive https://github.com/theos/theos.git $THEOS && echo THEOS=$THEOS >> $GITHUB_ENV"
       - name: Install ldid
         run: "brew install ldid"
-      - name: Build tweak
-        run: "cd \"ПрофильCustomTweak\" && make package FINALPACKAGE=1"
-        env: { THEOS: "/opt/theos" }
+     - name: Build tweak
+  working-directory: ProfileCustomTweak
+  run: make package FINALPACKAGE=1
+  env:
+    THEOS: /opt/theos
       - name: Locate built dylib
         run: "find . -name *.dylib -o -name *.deb"
       - name: Upload dylib artifact
