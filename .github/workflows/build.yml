@@ -22,13 +22,11 @@ jobs:
 
     - name: Locate built dylib
       run: find . -name "*.dylib" -o -name "*.deb"
-    - name: Locate built dylib
-      run: find . -name "*.dylib" -o -name "*.deb"
 
     - name: Upload dylib artifact
       uses: actions/upload-artifact@v4
       with:
-        name: ProfileCustomTweak-dylib
+        name: ProfileCustomTweak-build
         path: "**/*.dylib"
   inject:
     needs: build
