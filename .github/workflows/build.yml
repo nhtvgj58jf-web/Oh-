@@ -23,20 +23,24 @@ jobs:
     - name: Locate built dylib
       run: find . -name "*.dylib" -o -name "*.deb"
 
-    - name: Upload dylib artifact
+    - name: Upload tweak package
       uses: actions/upload-artifact@v4
       with:
         name: ProfileCustomTweak-build
-        path: "**/*.dylib"
+        path: |
+          **/*.deb
+          **/*.dylib
   inject:
     needs: build
     runs-on: macos-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+     
+      
       - name: Download built dylib
         uses: actions/download-artifact@v4
-        with: { name: "ProfileCustomTweak-dylib", path: "built" }
+        with: { name: "ProfileCustomTweak-build", path: "built" }
       - name: Download target IPA from Release
         run: "mkdir -p input && curl -L -o input/$IPA_NAME \"$IPA_URL\" && ls -la input"
       - name: Install insert_dylib
