@@ -122,17 +122,18 @@ jobs:
 
           insert_dylib --inplace --weak @executable_path/Frameworks/ProfileCustomTweak.dylib "$BIN"
 
-      - name: Ad-hoc sign
-        run: |
-         echo "APP=$APP"
-          
-          BIN=$(find "$APP" -maxdepth 1 -type f -perm -111 | head -n1)
-          
-          ls -la "$APP/Frameworks"
-          
-          ldid -S "$APP/Frameworks/ProfileCustomTweak.dylib"
-          ldid -S "$BIN"
+           - name: Ad-hoc sign
+             run: |
+               echo "APP=$APP"
 
+               BIN=$(find "$APP" -maxdepth 1 -type f -perm -111 | head -n1)
+
+               echo "BIN=$BIN"
+
+               ls -la "$APP"
+
+               ldid -S "$APP/Frameworks/ProfileCustomTweak.dylib"
+               ldid -S "$BIN"
       - name: Repack IPA
         run: |
           cd work
