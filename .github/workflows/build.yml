@@ -111,7 +111,12 @@ jobs:
 
       - name: Ad-hoc sign
         run: |
+         echo "APP=$APP"
+          
           BIN=$(find "$APP" -maxdepth 1 -type f -perm -111 | head -n1)
+          
+          ls -la "$APP/Frameworks"
+          
           ldid -S "$APP/Frameworks/ProfileCustomTweak.dylib"
           ldid -S "$BIN"
 
