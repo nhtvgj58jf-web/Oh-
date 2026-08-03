@@ -30,16 +30,18 @@ jobs:
         env:
           THEOS: /opt/theos
 
-      - name: Locate built files
-        run: find . -name "*.dylib" -o -name "*.deb"
-
+      - name: Find build output
+        run: |
+          echo "=== THEOS OUTPUT ==="
+          find ProfileCustomTweak -name "*.dylib" -o -name "*.deb"
+     
       - name: Upload tweak package
         uses: actions/upload-artifact@v4
         with:
           name: ProfileCustomTweak-build
           path: |
-            **/*.deb
-            **/*.dylib
+            ProfileCustomTweak/.theos/obj/**/*.dylib
+            ProfileCustomTweak/packages/*.deb
 
   inject:
     needs: build
