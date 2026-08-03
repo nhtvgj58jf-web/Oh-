@@ -94,11 +94,11 @@ jobs:
         run: |
           echo "APP=$APP"
 
-          BIN=$(find "$APP" -maxdepth 1 -type f -perm -111 | head -n1)
+          BIN="$APP/Telegram"
 
           echo "BIN=$BIN"
 
-          if [ -z "$BIN" ]; then
+          if [ ! -f "$BIN" ]; then
             echo "Executable not found"
             ls -la "$APP"
             exit 1
