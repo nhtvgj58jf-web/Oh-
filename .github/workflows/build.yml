@@ -3,21 +3,25 @@ on: { workflow_dispatch: {} }
 env: { IPA_URL: "https://github.com/nhtvgj58jf-web/Oh-/releases/download/This/Telegram_dark+ex.ipa", IPA_NAME: "Telegram_dark_ex.ipa" }
 jobs:
   build:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-      - name: Install Theos
-        run: "export THEOS=/opt/theos && sudo git clone --recursive https://github.com/theos/theos.git $THEOS && echo THEOS=$THEOS >> $GITHUB_ENV"
-      - name: Install ldid
-        run: "brew install ldid"
-     -  name: Build tweak
-  working-directory: ProfileCustomTweak
-  run: make package FINALPACKAGE=1
-  env:
-    THEOS: /opt/theos
-      - name: Locate built dylib
-        run: "find . -name *.dylib -o -name *.deb"
+  runs-on: macos-latest
+  steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Install Theos
+      run: export THEOS=/opt/theos && sudo git clone --recursive https://github.com/theos/theos.git $THEOS && echo THEOS=$THEOS >> $GITHUB_ENV
+
+    - name: Install ldid
+      run: brew install ldid
+
+    - name: Build tweak
+      working-directory: ProfileCustomTweak
+      run: make package FINALPACKAGE=1
+      env:
+        THEOS: /opt/theos
+
+    - name: Locate built dylib
+      run: find . -name "*.dylib" -o -name "*.deb"
       - name: Upload dylib artifact
         uses: actions/upload-artifact@v4
         with: { name: "ProfileCustomTweak-dylib", path: "**/*.dylib" }
