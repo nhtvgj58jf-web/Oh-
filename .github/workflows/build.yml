@@ -1,1 +1,98 @@
+name: Build ProfileCustomTweak
 
+on:
+  workflow_dispatch:   # запускаешь вручную из вкладки "Actions" на GitHub
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install Theos
+        run: |
+          export THEOS=/opt/theos
+          sudo git clone --recursive https://github.com/theos/theos.git $THEOS
+          echo "THEOS=$THEOS" >> $GITHUB_ENV
+
+      - name: Install ldid (для подписи dylib на лету)
+        run: |
+          brew install ldid
+
+      - name: Build tweak (dylib only, without device install)
+        run: |
+          export THEOS=/opt/theos
+          cd ProfileCustomTweak
+          make package FINALPACKAGE=1
+        env:
+          THEOS: /opt/theos
+
+      - name: Locate built dylib
+        run: |
+          find ProfileCustomTweak -name "*.dylib" -o -name "*.deb"
+
+      - name: Upload dylib artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ProfileCustomTweak-dylib
+          path: |
+            ProfileCustomTweak/.theos/obj/**/*.dylib
+            ProfileCustomTweak/packages/*.deb
+
+  inject:
+    needs: build
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Download built dylib
+        uses: actions/download-artifact@v4
+        with:
+          name: ProfileCustomTweak-dylib
+          path: built
+
+      - name: Install insert_dylib
+        run: |
+          git clone https://github.com/tyilo/insert_dylib.git
+          cd insert_dylib
+          xcodebuild -project insert_dylib.xcodeproj -configuration Release
+          sudo cp build/Release/insert_dylib /usr/local/bin/insert_dylib
+
+      - name: Unzip target IPA
+        run: |
+          mkdir -p work
+          unzip -q "input/Telegram_dark_ex.ipa" -d work
+          # ^ положи свой .ipa в репозиторий по пути input/Telegram_dark_ex.ipa
+
+      - name: Copy dylib into app bundle
+        run: |
+          APP="work/Payload/Telegram.app"
+          mkdir -p "$APP/Frameworks"
+          find built -name "*.dylib" -exec cp {} "$APP/Frameworks/ProfileCustomTweak.dylib" \;
+
+      - name: Inject dylib load command
+        run: |
+          APP="work/Payload/Telegram.app"
+          insert_dylib --inplace --weak \
+            @executable_path/Frameworks/ProfileCustomTweak.dylib \
+            "$APP/Telegram"
+
+      - name: Ad-hoc sign dylib and binary (temporary signature; замени на свою подпись через GBox после скачивания)
+        run: |
+          APP="work/Payload/Telegram.app"
+          ldid -S "$APP/Frameworks/ProfileCustomTweak.dylib"
+          ldid -S "$APP/Telegram"
+
+      - name: Repack IPA
+        run: |
+          cd work
+          zip -qr ../Telegram_with_ProfileCustomTweak.ipa Payload
+
+      - name: Upload patched IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Telegram_with_ProfileCustomTweak
+          path: Telegram_with_ProfileCustomTweak.ipa
