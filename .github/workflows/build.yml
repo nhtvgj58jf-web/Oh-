@@ -68,7 +68,7 @@ jobs:
           xcodebuild -project insert_dylib.xcodeproj -configuration Release
           sudo cp build/Release/insert_dylib /usr/local/bin/insert_dylib
 
-      - name: Unzip target IPA
+            - name: Unzip target IPA
         run: |
           mkdir -p work
           unzip -q input/$IPA_NAME -d work
@@ -81,13 +81,14 @@ jobs:
 
           if [ -z "$APP" ]; then
             echo "APP not found"
-            find work -maxdepth 5 -type d
             exit 1
           fi
 
           echo "APP=$APP" >> $GITHUB_ENV
+
           mkdir -p "$APP/Frameworks"
-          find built -name "*.dylib" -exec cp {} "$APP/Frameworks/
+
+          find built -name "*.dylib" -exec cp {} "$APP/Frameworks/ProfileCustomTweak.dylib" \;
       - name: Ad-hoc sign
         run: |
           BIN=$(find "$APP" -maxdepth 1 -type f -perm -u+x | head -n1)
