@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  IPA_URL: "https://github.com/nhtvgj58jf-web/Oh-/releases/download/Good/Telegram_dark+ex.ipa"
+  IPA_URL: "https://github.com/nhtvgj58jf-web/Oh-/releases/download/Hey/Swiftgram.12.8.ipa"
   IPA_NAME: "Telegram_dark_ex.ipa"
 
 jobs:
