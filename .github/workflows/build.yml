@@ -4,7 +4,6 @@ on: workflow_dispatch
 env:
   IPA_URL: "https://github.com/nhtvgj58jf-web/Oh-/releases/download/This/Telegram_dark+ex.ipa"
   IPA_NAME: "Telegram_dark_ex.ipa"
-  THEOS: /opt/theos
 
 jobs:
   build:
@@ -14,91 +13,23 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         
-      - name: Debug - Show repo structure
-        run: |
-          echo "=== Current directory ==="
-          pwd
-          echo "=== Full content ==="
-          ls -laR
-          
       - name: Install Theos
         run: |
           sudo git clone --recursive https://github.com/theos/theos.git /opt/theos
-          sudo chown -R $(whoami) /opt/theos
+          echo "THEOS=/opt/theos" >> $GITHUB_ENV
           
       - name: Install ldid
         run: brew install ldid
         
-      - name: Create tweak structure if missing
-        run: |
-          # If ProfileCustomTweak folder doesn't exist, create it from scratch
-          if [ ! -d "ProfileCustomTweak" ]; then
-            echo "Creating ProfileCustomTweak folder from scratch..."
-            mkdir -p ProfileCustomTweak
-            
-            # Create Makefile
-            cat > ProfileCustomTweak/Makefile << 'EOF'
-            TARGET := iphone:clang:latest:14.0
-            INSTALL_TARGET_PROCESSES = Telegram
-            
-            include $(THEOS)/makefiles/common.mk
-            
-            TWEAK_NAME = ProfileCustomTweak
-            ProfileCustomTweak_FILES = Tweak.xm
-            ProfileCustomTweak_CFLAGS = -fobjc-arc
-            ProfileCustomTweak_FRAMEWORKS = UIKit AVFoundation
-            
-            include $(THEOS_MAKE_PATH)/tweak.mk
-            
-            after-install::
-                install.exec "killall -9 Telegram"
-            EOF
-            
-            # Create Tweak.xm
-            cat > ProfileCustomTweak/Tweak.xm << 'EOF'
-            %hook UIApplication
-            
-            - (void)applicationDidFinishLaunching:(UIApplication *)application {
-                %orig;
-                UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"ProfileCustomTweak"
-                                                               message:@"Tweak loaded successfully!"
-                                                              delegate:nil
-                                                     cancelButtonTitle:@"OK"
-                                                     otherButtonTitles:nil];
-                [alert show];
-                [alert release];
-            }
-            
-            %end
-            EOF
-            
-            echo "Created ProfileCustomTweak with Makefile and Tweak.xm"
-          else
-            echo "ProfileCustomTweak folder already exists"
-          fi
-          
-      - name: Show tweak folder content
-        run: |
-          echo "=== ProfileCustomTweak content ==="
-          ls -la ProfileCustomTweak/
-          echo "=== Makefile content ==="
-          cat ProfileCustomTweak/Makefile
-          
       - name: Build tweak
         run: |
           export THEOS=/opt/theos
-          cd ProfileCustomTweak
-          echo "Building in: $(pwd)"
+          cd "ПрофильCustomTweak"
           make package FINALPACKAGE=1
           
       - name: Find built files
-        run: |
-          echo "Searching for built files..."
-          find . -name "*.dylib" -o -name "*.deb" -o -name "*.plist" | while read file; do
-            echo "Found: $file"
-            ls -la "$file"
-          done
-          
+        run: find . -name "*.dylib" -o -name "*.deb"
+        
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
@@ -119,6 +50,11 @@ jobs:
           name: ProfileCustomTweak-dylib
           path: built
           
+      - name: Download IPA
+        run: |
+          mkdir -p input
+          curl -L -o "input/${{ env.IPA_NAME }}" "${{ env.IPA_URL }}"
+          
       - name: Install insert_dylib
         run: |
           git clone https://github.com/tyilo/insert_dylib.git
@@ -126,36 +62,25 @@ jobs:
           xcodebuild -project insert_dylib.xcodeproj -configuration Release
           sudo cp build/Release/insert_dylib /usr/local/bin/
           
-      - name: Download IPA
-        run: |
-          mkdir -p input
-          curl -L -o "input/${{ env.IPA_NAME }}" "${{ env.IPA_URL }}"
-          
       - name: Unzip IPA
         run: |
           mkdir -p work
           unzip -q "input/${{ env.IPA_NAME }}" -d work
           
-      - name: Find and inject dylib
+      - name: Inject dylib
         run: |
-          # Find the .app bundle
           APP=$(find work/Payload -name "*.app" | head -n1)
-          echo "Found app: $APP"
-          
-          # Create Frameworks folder
           mkdir -p "$APP/Frameworks"
-          
-          # Copy dylib
           cp built/*.dylib "$APP/Frameworks/ProfileCustomTweak.dylib"
-          echo "Copied dylib to Frameworks"
-          
-          # Find the main binary
           BIN=$(find "$APP" -maxdepth 1 -type f -perm -u+x | head -n1)
-          echo "Main binary: $BIN"
-          
-          # Inject
           insert_dylib --inplace --weak @executable_path/Frameworks/ProfileCustomTweak.dylib "$BIN"
-          echo "Injected dylib"
+          
+      - name: Sign binaries
+        run: |
+          APP=$(find work/Payload -name "*.app" | head -n1)
+          BIN=$(find "$APP" -maxdepth 1 -type f -perm -u+x | head -n1)
+          ldid -S "$APP/Frameworks/ProfileCustomTweak.dylib" || true
+          ldid -S "$BIN" || true
           
       - name: Repack IPA
         run: |
